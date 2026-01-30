@@ -354,25 +354,46 @@ async def apply_to_jobs(page, query, location, max_apps=5):
             break
 
         try:
-            # Click on job to see details
-            await job_card.click()
-            await page.wait_for_timeout(3000)  # Wait 3 seconds for job details to load
+            # Scroll job card into view first
+            await job_card.scroll_into_view_if_needed()
+            await page.wait_for_timeout(500)
 
-            # Find Easy Apply button with shorter timeout
-            easy_apply_btn = await page.query_selector('button.jobs-apply-button')
+            # Click on job to see details with timeout handling
+            try:
+                await job_card.click(timeout=5000)
+            except:
+                print(f"   ⏭️ Job {i+1}: Click timeout, skipping")
+                continue
+
+            await page.wait_for_timeout(2000)  # Wait for job details
+
+            # Find Easy Apply button
+            try:
+                easy_apply_btn = await page.wait_for_selector('button.jobs-apply-button', timeout=5000)
+            except:
+                print(f"   ⏭️ Job {i+1}: No Easy Apply button found")
+                continue
 
             if easy_apply_btn:
                 button_text = await easy_apply_btn.inner_text()
 
                 if "Easy Apply" in button_text:
                     # Get job title for logging
-                    title_elem = await page.query_selector('.job-details-jobs-unified-top-card__job-title')
-                    job_title = await title_elem.inner_text() if title_elem else "Unknown"
+                    try:
+                        title_elem = await page.query_selector('.job-details-jobs-unified-top-card__job-title')
+                        job_title = await title_elem.inner_text() if title_elem else f"Job {i+1}"
+                    except:
+                        job_title = f"Job {i+1}"
 
                     print(f"   📝 Applying to: {job_title[:50]}...")
 
-                    await easy_apply_btn.click()
-                    await random_delay(1, 2)
+                    try:
+                        await easy_apply_btn.click(timeout=5000)
+                    except:
+                        print(f"   ⏭️ Easy Apply click failed, skipping")
+                        continue
+
+                    await page.wait_for_timeout(1500)
 
                     # Complete the application
                     success = await apply_to_single_job(page)
@@ -414,7 +435,7 @@ async def main():
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
-        context.set_default_timeout(15000)  # 15 second timeout instead of 30
+        context.set_default_timeout(10000)  # 10 second timeout
 
         page = await context.new_page()
 
