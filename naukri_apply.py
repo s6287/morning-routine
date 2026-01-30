@@ -151,8 +151,19 @@ async def apply_to_jobs(page, query, max_apps=5):
 
     print(f"\n🔍 Searching: '{query}' in {LOCATION}")
 
-    await page.goto(search_url, wait_until='domcontentloaded', timeout=30000)
-    await page.wait_for_timeout(3000)
+    # Retry logic for page load
+    for retry in range(3):
+        try:
+            await page.goto(search_url, wait_until='load', timeout=45000)
+            await page.wait_for_timeout(4000)
+            break
+        except Exception as e:
+            if retry < 2:
+                print(f"   ⚠️ Page load failed (attempt {retry + 1}), retrying...")
+                await asyncio.sleep(3)
+            else:
+                print(f"   ❌ Page load failed after 3 attempts")
+                return 0
 
     # Scroll to load jobs
     for _ in range(3):
@@ -215,16 +226,40 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
-            args=['--no-sandbox', '--disable-dev-shm-usage']
+            args=[
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-infobars',
+                '--window-size=1366,768'
+            ]
         )
 
         context = await browser.new_context(
-            viewport={"width": 1280, "height": 800},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            viewport={"width": 1366, "height": 768},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            extra_http_headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1"
+            }
         )
-        context.set_default_timeout(15000)
+        context.set_default_timeout(20000)
 
         page = await context.new_page()
+
+        # Anti-detection: hide webdriver
+        await page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            window.chrome = { runtime: {} };
+        """)
 
         try:
             # Login to Naukri
