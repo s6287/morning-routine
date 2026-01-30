@@ -341,9 +341,9 @@ async def apply_to_jobs(page, query, location, max_apps=5):
 
     # Main loop - re-fetch DOM every iteration to avoid stale references
     while applied_count < max_apps and processed_jobs < 20:  # Safety limit of 20 jobs
-        # Reload the search page to get fresh DOM
-        await page.goto(search_url, wait_until='networkidle')
-        await page.wait_for_timeout(3000)
+        # Reload the search page to get fresh DOM (use domcontentloaded for faster/reliable load)
+        await page.goto(search_url, wait_until='domcontentloaded', timeout=30000)
+        await page.wait_for_timeout(4000)  # Extra wait for dynamic content
 
         # Scroll to load jobs
         for _ in range(2):
