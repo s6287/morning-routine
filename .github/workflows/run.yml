@@ -35,17 +35,25 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
-      - name: Run task
+      - name: Run LinkedIn Apply
         env:
           LINKEDIN_EMAIL: ${{ secrets.LINKEDIN_EMAIL }}
           LINKEDIN_PASSWORD: ${{ secrets.LINKEDIN_PASSWORD }}
           LINKEDIN_COOKIE: ${{ secrets.LINKEDIN_COOKIE }}
         run: python job_apply.py
 
-      - name: Upload error screenshot
+      - name: Run Naukri Apply
+        env:
+          NAUKRI_SID: ${{ secrets.NAUKRI_SID }}
+          NAUKRI_NKWAP: ${{ secrets.NAUKRI_NKWAP }}
+        run: python naukri_apply.py
+
+      - name: Upload error screenshots
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: error-screenshot
-          path: error_screenshot.png
+          name: error-screenshots
+          path: |
+            error_screenshot.png
+            naukri_error.png
           if-no-files-found: ignore
