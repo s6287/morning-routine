@@ -8,21 +8,21 @@ LINKEDIN_EMAIL = os.environ.get("LINKEDIN_EMAIL")
 LINKEDIN_PASSWORD = os.environ.get("LINKEDIN_PASSWORD")
 LINKEDIN_COOKIE = os.environ.get("LINKEDIN_COOKIE")  # li_at cookie for session auth
 
-# Your job search keywords
+# Your job search keywords (reduced for testing - uncomment others after test passes)
 SEARCH_QUERIES = [
     "react developer",
-    "frontend developer",
-    "full stack developer",
-    "junior frontend developer",
-    "mern developer",
-    "mern stack developer"
+    # "frontend developer",
+    # "full stack developer",
+    # "junior frontend developer",
+    # "mern developer",
+    # "mern stack developer"
 ]
 
-# Locations to search
-LOCATIONS = ["Mumbai", "Remote"]
+# Locations to search (reduced for testing)
+LOCATIONS = ["Mumbai"]  # Add "Remote" after test passes
 
-# Max total applications
-MAX_APPLICATIONS = 40
+# Max total applications (set to 1 for testing, increase to 20-40 after confirmed working)
+MAX_APPLICATIONS = 1
 
 # Filters
 EXPERIENCE_LEVELS = "2%2C3"  # 2=Entry, 3=Associate/Mid
