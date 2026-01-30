@@ -21,8 +21,8 @@ SEARCH_QUERIES = [
 # Locations to search (reduced for testing)
 LOCATIONS = ["Mumbai"]  # Add "Remote" after test passes
 
-# Max total applications (set to 1 for testing, increase to 20-40 after confirmed working)
-MAX_APPLICATIONS = 1
+# Max total applications (set to 3 for testing, increase to 20-40 after confirmed working)
+MAX_APPLICATIONS = 3
 
 # Filters
 EXPERIENCE_LEVELS = "2%2C3"  # 2=Entry, 3=Associate/Mid
@@ -167,54 +167,88 @@ async def fill_screening_questions(page):
 async def apply_to_single_job(page):
     """Handle the Easy Apply modal and submit application"""
     try:
-        await random_delay(1, 2)
+        await page.wait_for_timeout(2000)
 
-        max_steps = 6
+        max_steps = 8
         for step in range(max_steps):
             # Fill any screening questions on this step
             await fill_screening_questions(page)
-            await random_delay(0.5, 1)
+            await page.wait_for_timeout(500)
 
-            # Check for Submit button
-            submit_btn = await page.query_selector('button[aria-label="Submit application"]')
-            if submit_btn:
-                await submit_btn.click()
-                await random_delay(2, 3)
+            # Try multiple submit button selectors
+            submit_selectors = [
+                'button[aria-label="Submit application"]',
+                'button[aria-label="Submit"]',
+                'button:has-text("Submit application")',
+                'button:has-text("Submit")'
+            ]
 
-                # Close success modal
-                dismiss_btn = await page.query_selector('button[aria-label="Dismiss"]')
-                if dismiss_btn:
-                    await dismiss_btn.click()
+            for selector in submit_selectors:
+                try:
+                    submit_btn = await page.query_selector(selector)
+                    if submit_btn and await submit_btn.is_visible():
+                        await submit_btn.click()
+                        await page.wait_for_timeout(2000)
 
-                return True
+                        # Close success modal
+                        dismiss_btn = await page.query_selector('button[aria-label="Dismiss"]')
+                        if dismiss_btn:
+                            await dismiss_btn.click()
+                        return True
+                except:
+                    continue
 
-            # Check for Review button
+            # Try Review button
             review_btn = await page.query_selector('button[aria-label="Review your application"]')
-            if review_btn:
+            if review_btn and await review_btn.is_visible():
                 await review_btn.click()
-                await random_delay(1, 2)
+                await page.wait_for_timeout(1500)
                 continue
 
-            # Check for Next button
-            next_btn = await page.query_selector('button[aria-label="Continue to next step"]')
-            if next_btn:
-                await next_btn.click()
-                await random_delay(1, 2)
+            # Try Next button
+            next_selectors = [
+                'button[aria-label="Continue to next step"]',
+                'button:has-text("Next")',
+                'button:has-text("Continue")'
+            ]
+
+            clicked_next = False
+            for selector in next_selectors:
+                try:
+                    next_btn = await page.query_selector(selector)
+                    if next_btn and await next_btn.is_visible():
+                        await next_btn.click()
+                        await page.wait_for_timeout(1500)
+                        clicked_next = True
+                        break
+                except:
+                    continue
+
+            if clicked_next:
                 continue
 
             # No button found, maybe need to close
             break
 
         # If we get here, something went wrong - close the modal
-        close_btn = await page.query_selector('button[aria-label="Dismiss"]')
-        if close_btn:
-            await close_btn.click()
+        close_selectors = [
+            'button[aria-label="Dismiss"]',
+            'button[aria-label="Discard"]',
+            'button:has-text("Discard")'
+        ]
+        for selector in close_selectors:
+            try:
+                close_btn = await page.query_selector(selector)
+                if close_btn:
+                    await close_btn.click()
+                    break
+            except:
+                continue
 
         return False
 
     except Exception as e:
         print(f"⚠️ Error in apply flow: {e}")
-        # Try to close modal
         try:
             close_btn = await page.query_selector('button[aria-label="Dismiss"]')
             if close_btn:
@@ -258,9 +292,9 @@ async def apply_to_jobs(page, query, location, max_apps=5):
         try:
             # Click on job to see details
             await job_card.click()
-            await random_delay(2, 3)
+            await page.wait_for_timeout(3000)  # Wait 3 seconds for job details to load
 
-            # Find Easy Apply button
+            # Find Easy Apply button with shorter timeout
             easy_apply_btn = await page.query_selector('button.jobs-apply-button')
 
             if easy_apply_btn:
@@ -316,6 +350,7 @@ async def main():
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
+        context.set_default_timeout(15000)  # 15 second timeout instead of 30
 
         page = await context.new_page()
 
