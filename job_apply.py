@@ -325,6 +325,7 @@ async def apply_to_single_job(page):
 async def apply_to_jobs(page, query, location, max_apps=5):
     """Search and apply to jobs for a specific query and location"""
     applied_count = 0
+    processed_jobs = 0
 
     # Build search URL with all filters
     search_url = (
@@ -337,53 +338,67 @@ async def apply_to_jobs(page, query, location, max_apps=5):
     )
 
     print(f"\n🔍 Searching: '{query}' in {location}")
-    await page.goto(search_url)
-    await random_delay(3, 5)
 
-    # Scroll to load more jobs
-    for _ in range(3):
-        await page.evaluate("window.scrollBy(0, 500)")
-        await random_delay(0.5, 1)
+    # Main loop - re-fetch DOM every iteration to avoid stale references
+    while applied_count < max_apps and processed_jobs < 20:  # Safety limit of 20 jobs
+        # Reload the search page to get fresh DOM
+        await page.goto(search_url, wait_until='networkidle')
+        await page.wait_for_timeout(3000)
 
-    # Get job cards
-    job_cards = await page.query_selector_all('.job-card-container, .jobs-search-results__list-item')
-    print(f"   Found {len(job_cards)} job listings")
+        # Scroll to load jobs
+        for _ in range(2):
+            await page.evaluate("window.scrollBy(0, 300)")
+            await page.wait_for_timeout(500)
 
-    for i, job_card in enumerate(job_cards):
-        if applied_count >= max_apps:
+        # Re-fetch job cards every time (CRITICAL - avoids stale references)
+        job_cards = await page.query_selector_all('.job-card-container, .jobs-search-results__list-item')
+
+        if processed_jobs == 0:
+            print(f"   Found {len(job_cards)} job listings")
+
+        if processed_jobs >= len(job_cards):
+            print(f"   No more jobs to process")
             break
 
+        # Get the specific job card for this iteration
         try:
-            # Scroll job card into view first
+            job_card = job_cards[processed_jobs]
+        except IndexError:
+            break
+
+        processed_jobs += 1
+
+        try:
+            # Scroll job card into view
             await job_card.scroll_into_view_if_needed()
             await page.wait_for_timeout(500)
 
-            # Click on job to see details with timeout handling
+            # Click on job to see details
             try:
                 await job_card.click(timeout=5000)
             except:
-                print(f"   ⏭️ Job {i+1}: Click timeout, skipping")
+                print(f"   ⏭️ Job {processed_jobs}: Click failed, skipping")
                 continue
 
-            await page.wait_for_timeout(2000)  # Wait for job details
+            await page.wait_for_timeout(2000)
 
             # Find Easy Apply button
             try:
                 easy_apply_btn = await page.wait_for_selector('button.jobs-apply-button', timeout=5000)
             except:
-                print(f"   ⏭️ Job {i+1}: No Easy Apply button found")
+                print(f"   ⏭️ Job {processed_jobs}: No apply button found")
                 continue
 
             if easy_apply_btn:
                 button_text = await easy_apply_btn.inner_text()
 
                 if "Easy Apply" in button_text:
-                    # Get job title for logging
+                    # Get job title
                     try:
                         title_elem = await page.query_selector('.job-details-jobs-unified-top-card__job-title')
-                        job_title = await title_elem.inner_text() if title_elem else f"Job {i+1}"
+                        job_title = await title_elem.inner_text() if title_elem else f"Job {processed_jobs}"
                     except:
-                        job_title = f"Job {i+1}"
+                        job_title = f"Job {processed_jobs}"
 
                     print(f"   📝 Applying to: {job_title[:50]}...")
 
@@ -407,9 +422,10 @@ async def apply_to_jobs(page, query, location, max_apps=5):
                     await random_delay(2, 4)
 
         except Exception as e:
-            print(f"   ⚠️ Error with job {i+1}: {str(e)[:50]}")
+            print(f"   ⚠️ Error with job {processed_jobs}: {str(e)[:50]}")
             continue
 
+    print(f"   📊 Progress: {applied_count}/{max_apps} applications submitted")
     return applied_count
 
 
