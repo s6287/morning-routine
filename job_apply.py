@@ -6,6 +6,7 @@ import random
 # ============ YOUR CONFIGURATION ============
 LINKEDIN_EMAIL = os.environ.get("LINKEDIN_EMAIL")
 LINKEDIN_PASSWORD = os.environ.get("LINKEDIN_PASSWORD")
+LINKEDIN_COOKIE = os.environ.get("LINKEDIN_COOKIE")  # li_at cookie for session auth
 
 # Your job search keywords
 SEARCH_QUERIES = [
@@ -57,24 +58,49 @@ async def random_delay(min_sec=1, max_sec=3):
     await asyncio.sleep(random.uniform(min_sec, max_sec))
 
 
-async def login_linkedin(page):
-    """Login to LinkedIn"""
+async def login_linkedin(page, context):
+    """Login to LinkedIn using cookie"""
     print("🔐 Logging into LinkedIn...")
 
+    # Use cookie-based authentication (bypasses login security)
+    if LINKEDIN_COOKIE:
+        print("🍪 Using cookie authentication...")
+        await context.add_cookies([{
+            "name": "li_at",
+            "value": LINKEDIN_COOKIE,
+            "domain": ".linkedin.com",
+            "path": "/"
+        }])
+
+        # Go to LinkedIn feed to verify login
+        await page.goto("https://www.linkedin.com/feed/")
+        await random_delay(3, 5)
+
+        # Check if logged in
+        current_url = page.url
+        if "feed" in current_url or "jobs" in current_url or "mynetwork" in current_url:
+            print("✅ LinkedIn login successful (via cookie)!")
+            return True
+        elif "login" in current_url or "authwall" in current_url:
+            print("❌ Cookie expired or invalid. Please update LINKEDIN_COOKIE.")
+            return False
+        else:
+            print(f"✅ Logged in! Current URL: {current_url}")
+            return True
+
+    # Fallback to password login
+    print("🔑 Using password authentication...")
     await page.goto("https://www.linkedin.com/login")
     await random_delay(2, 4)
 
-    # Fill credentials
     await page.fill('input[name="session_key"]', LINKEDIN_EMAIL)
     await random_delay(0.5, 1)
     await page.fill('input[name="session_password"]', LINKEDIN_PASSWORD)
     await random_delay(0.5, 1)
 
-    # Click login
     await page.click('button[type="submit"]')
     await random_delay(4, 6)
 
-    # Check if login successful
     current_url = page.url
     if "feed" in current_url or "jobs" in current_url or "mynetwork" in current_url:
         print("✅ LinkedIn login successful!")
@@ -294,7 +320,7 @@ async def main():
         page = await context.new_page()
 
         # Login to LinkedIn
-        logged_in = await login_linkedin(page)
+        logged_in = await login_linkedin(page, context)
 
         if not logged_in:
             print("\n❌ Could not login to LinkedIn. Exiting.")
