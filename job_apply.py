@@ -28,21 +28,26 @@ EXPERIENCE_LEVELS = "2%2C3"  # 2=Entry, 3=Associate/Mid
 DATE_POSTED = "r604800"  # Last week (604800 seconds = 7 days)
 
 # ============ SCREENING QUESTION ANSWERS ============
-# Update these with your actual details!
 SCREENING_ANSWERS = {
-    "years of experience": "1",
-    "experience with react": "1",
+    "years of experience": "2",
+    "experience with react": "2",
     "experience with javascript": "2",
-    "experience with node": "1",
-    "salary": "400000",
-    "expected ctc": "4",
+    "experience with node": "2",
+    "experience with frontend": "2",
+    "experience with mern": "2",
+    "experience with html": "2",
+    "experience with css": "2",
+    "salary": "350000",
+    "expected ctc": "3.5",
     "current ctc": "0",
-    "notice period": "0",
+    "notice period": "30",
     "willing to relocate": "Yes",
     "work remotely": "Yes",
     "authorized to work": "Yes",
     "sponsorship": "No",
-    "phone": "",  # Add your phone if needed
+    "phone": "6287183433",
+    "mobile": "6287183433",
+    "contact": "6287183433",
 }
 
 # ============ MAIN CODE ============
