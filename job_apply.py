@@ -29,8 +29,12 @@ EXPERIENCE_LEVELS = "2%2C3"  # 2=Entry, 3=Associate/Mid
 DATE_POSTED = "r604800"  # Last week (604800 seconds = 7 days)
 
 # ============ SCREENING QUESTION ANSWERS ============
+# These answers are used to auto-fill LinkedIn Easy Apply forms
 SCREENING_ANSWERS = {
+    # Experience questions
     "years of experience": "2",
+    "total experience": "2",
+    "how many years": "2",
     "experience with react": "2",
     "experience with javascript": "2",
     "experience with node": "2",
@@ -38,17 +42,77 @@ SCREENING_ANSWERS = {
     "experience with mern": "2",
     "experience with html": "2",
     "experience with css": "2",
+    "experience with typescript": "2",
+    "experience with redux": "1",
+    "experience with next": "1",
+    "experience with tailwind": "2",
+    "experience with git": "2",
+    "experience with mongodb": "2",
+    "experience with express": "2",
+    "experience with sql": "1",
+    "experience with python": "1",
+    "experience with aws": "1",
+    "proficiency": "3",  # Scale 1-5, 3 = intermediate
+    "rate your": "3",
+
+    # Salary questions
     "salary": "350000",
+    "expected salary": "350000",
+    "desired salary": "350000",
+    "annual salary": "350000",
     "expected ctc": "3.5",
+    "desired ctc": "3.5",
     "current ctc": "0",
+    "current salary": "0",
+
+    # Notice period / Availability
     "notice period": "30",
+    "how soon": "30",
+    "availability": "30",
+    "start date": "30",
+    "days notice": "30",
+    "weeks notice": "4",
+
+    # Location / Relocation
     "willing to relocate": "Yes",
+    "relocate": "Yes",
     "work remotely": "Yes",
+    "remote": "Yes",
+    "hybrid": "Yes",
+    "on-site": "Yes",
+    "onsite": "Yes",
+    "work from office": "Yes",
+    "mumbai": "Yes",
+    "location": "Yes",
+
+    # Work authorization
     "authorized to work": "Yes",
+    "work authorization": "Yes",
+    "legally authorized": "Yes",
+    "eligible to work": "Yes",
     "sponsorship": "No",
+    "visa sponsorship": "No",
+    "require sponsorship": "No",
+    "need sponsorship": "No",
+
+    # Contact details
     "phone": "6287183433",
     "mobile": "6287183433",
     "contact": "6287183433",
+    "number": "6287183433",
+
+    # Education
+    "degree": "Yes",
+    "bachelor": "Yes",
+    "graduation": "Yes",
+    "graduate": "Yes",
+
+    # General Yes/No
+    "comfortable": "Yes",
+    "willing": "Yes",
+    "able to": "Yes",
+    "do you have": "Yes",
+    "are you": "Yes",
 }
 
 # ============ MAIN CODE ============
