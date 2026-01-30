@@ -341,9 +341,21 @@ async def apply_to_jobs(page, query, location, max_apps=5):
 
     # Main loop - re-fetch DOM every iteration to avoid stale references
     while applied_count < max_apps and processed_jobs < 20:  # Safety limit of 20 jobs
-        # Reload the search page to get fresh DOM (use domcontentloaded for faster/reliable load)
-        await page.goto(search_url, wait_until='domcontentloaded', timeout=30000)
-        await page.wait_for_timeout(4000)  # Extra wait for dynamic content
+        # Reload with retry logic (handles random GitHub runner failures)
+        for retry in range(2):
+            try:
+                await page.goto(search_url, wait_until='domcontentloaded', timeout=30000)
+                # Wait for LinkedIn-specific element to confirm page is usable
+                await page.wait_for_selector('.jobs-search-results-list, .scaffold-layout__list', timeout=20000)
+                print(f"   📄 Page ready (attempt {retry + 1})")
+                break
+            except Exception as e:
+                if retry == 0:
+                    print(f"   ⚠️ Page load failed, retrying... ({str(e)[:30]})")
+                    await asyncio.sleep(5)
+                else:
+                    print(f"   ❌ Page load failed after retry")
+                    raise
 
         # Scroll to load jobs
         for _ in range(2):
@@ -440,6 +452,7 @@ async def main():
     print(f"📍 Locations: {', '.join(LOCATIONS)}")
     print("=" * 50)
 
+    page = None  # For screenshot on failure
     async with async_playwright() as p:
         # Launch browser
         browser = await p.chromium.launch(
@@ -455,42 +468,52 @@ async def main():
 
         page = await context.new_page()
 
-        # Login to LinkedIn
-        logged_in = await login_linkedin(page, context)
+        try:
+            # Login to LinkedIn
+            logged_in = await login_linkedin(page, context)
 
-        if not logged_in:
-            print("\n❌ Could not login to LinkedIn. Exiting.")
+            if not logged_in:
+                print("\n❌ Could not login to LinkedIn. Exiting.")
+                await browser.close()
+                return
+
+            # Calculate apps per search combination
+            total_searches = len(SEARCH_QUERIES) * len(LOCATIONS)
+            apps_per_search = max(1, MAX_APPLICATIONS // total_searches)
+
+            total_applied = 0
+
+            # Apply for each keyword + location combination
+            for query in SEARCH_QUERIES:
+                for location in LOCATIONS:
+                    if total_applied >= MAX_APPLICATIONS:
+                        break
+
+                    remaining = MAX_APPLICATIONS - total_applied
+                    to_apply = min(apps_per_search, remaining)
+
+                    applied = await apply_to_jobs(page, query, location, to_apply)
+                    total_applied += applied
+
+                    print(f"   📊 Progress: {total_applied}/{MAX_APPLICATIONS} total applications")
+
+                    # Random delay between searches
+                    await random_delay(5, 10)
+
+            print("\n" + "=" * 50)
+            print(f"🎉 DONE! Total applications submitted: {total_applied}")
+            print("=" * 50)
+
+        except Exception as e:
+            # Screenshot on failure for debugging
+            print(f"\n❌ FATAL ERROR: {e}")
+            if page:
+                await page.screenshot(path="error_screenshot.png", full_page=True)
+                print("📸 Screenshot saved: error_screenshot.png")
+            raise
+
+        finally:
             await browser.close()
-            return
-
-        # Calculate apps per search combination
-        total_searches = len(SEARCH_QUERIES) * len(LOCATIONS)
-        apps_per_search = max(1, MAX_APPLICATIONS // total_searches)
-
-        total_applied = 0
-
-        # Apply for each keyword + location combination
-        for query in SEARCH_QUERIES:
-            for location in LOCATIONS:
-                if total_applied >= MAX_APPLICATIONS:
-                    break
-
-                remaining = MAX_APPLICATIONS - total_applied
-                to_apply = min(apps_per_search, remaining)
-
-                applied = await apply_to_jobs(page, query, location, to_apply)
-                total_applied += applied
-
-                print(f"   📊 Progress: {total_applied}/{MAX_APPLICATIONS} total applications")
-
-                # Random delay between searches
-                await random_delay(5, 10)
-
-        print("\n" + "=" * 50)
-        print(f"🎉 DONE! Total applications submitted: {total_applied}")
-        print("=" * 50)
-
-        await browser.close()
 
 
 if __name__ == "__main__":

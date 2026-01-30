@@ -41,3 +41,11 @@ jobs:
           LINKEDIN_PASSWORD: ${{ secrets.LINKEDIN_PASSWORD }}
           LINKEDIN_COOKIE: ${{ secrets.LINKEDIN_COOKIE }}
         run: python job_apply.py
+
+      - name: Upload error screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshot
+          path: error_screenshot.png
+          if-no-files-found: ignore
