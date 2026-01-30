@@ -228,18 +228,34 @@ async def fill_screening_questions(page):
         print(f"⚠️ Error filling screening questions: {e}")
 
 
-async def apply_to_single_job(page):
-    """Handle the Easy Apply modal and submit application"""
+async def apply_to_single_job(page, max_steps_allowed=3):
+    """
+    Handle the Easy Apply modal and submit application.
+    Only processes simple applications (up to max_steps_allowed steps).
+    Returns: True=applied, False=skipped, None=complex (skip early)
+    """
     try:
         await page.wait_for_timeout(2000)
 
-        max_steps = 8
-        for step in range(max_steps):
+        # Check for file upload requirement - skip immediately if found
+        upload_input = await page.query_selector('input[type="file"]')
+        if upload_input:
+            await close_modal(page)
+            return None  # Complex - requires file upload
+
+        for step in range(max_steps_allowed):
             # Fill any screening questions on this step
             await fill_screening_questions(page)
             await page.wait_for_timeout(500)
 
-            # Try multiple submit button selectors
+            # Check for required fields that aren't filled (red asterisks with empty inputs)
+            required_empty = await page.query_selector('input[required]:invalid, select[required]:invalid')
+            if required_empty and step > 0:
+                # Has unfilled required fields we can't handle
+                await close_modal(page)
+                return None
+
+            # Try Submit button first
             submit_selectors = [
                 'button[aria-label="Submit application"]',
                 'button[aria-label="Submit"]',
@@ -262,14 +278,19 @@ async def apply_to_single_job(page):
                 except:
                     continue
 
-            # Try Review button
+            # Try Review button (usually last step before submit)
             review_btn = await page.query_selector('button[aria-label="Review your application"]')
             if review_btn and await review_btn.is_visible():
                 await review_btn.click()
                 await page.wait_for_timeout(1500)
                 continue
 
-            # Try Next button
+            # Try Next button - but if we're at max steps, skip
+            if step >= max_steps_allowed - 1:
+                # Too many steps, this is complex
+                await close_modal(page)
+                return None
+
             next_selectors = [
                 'button[aria-label="Continue to next step"]',
                 'button:has-text("Next")',
@@ -291,35 +312,39 @@ async def apply_to_single_job(page):
             if clicked_next:
                 continue
 
-            # No button found, maybe need to close
+            # No button found
             break
 
-        # If we get here, something went wrong - close the modal
-        close_selectors = [
-            'button[aria-label="Dismiss"]',
-            'button[aria-label="Discard"]',
-            'button:has-text("Discard")'
-        ]
-        for selector in close_selectors:
-            try:
-                close_btn = await page.query_selector(selector)
-                if close_btn:
-                    await close_btn.click()
-                    break
-            except:
-                continue
-
+        await close_modal(page)
         return False
 
     except Exception as e:
         print(f"⚠️ Error in apply flow: {e}")
-        try:
-            close_btn = await page.query_selector('button[aria-label="Dismiss"]')
-            if close_btn:
-                await close_btn.click()
-        except:
-            pass
+        await close_modal(page)
         return False
+
+
+async def close_modal(page):
+    """Helper to close the Easy Apply modal"""
+    close_selectors = [
+        'button[aria-label="Dismiss"]',
+        'button[aria-label="Discard"]',
+        'button:has-text("Discard")',
+        'button:has-text("Save")'
+    ]
+    for selector in close_selectors:
+        try:
+            close_btn = await page.query_selector(selector)
+            if close_btn and await close_btn.is_visible():
+                await close_btn.click()
+                await page.wait_for_timeout(500)
+                # Handle confirmation dialog if appears
+                confirm_btn = await page.query_selector('button[data-test-dialog-primary-btn]')
+                if confirm_btn:
+                    await confirm_btn.click()
+                break
+        except:
+            continue
 
 
 async def apply_to_jobs(page, query, location, max_apps=5):
@@ -422,14 +447,16 @@ async def apply_to_jobs(page, query, location, max_apps=5):
 
                     await page.wait_for_timeout(1500)
 
-                    # Complete the application
-                    success = await apply_to_single_job(page)
+                    # Complete the application (max 3 steps only)
+                    result = await apply_to_single_job(page, max_steps_allowed=3)
 
-                    if success:
+                    if result is True:
                         applied_count += 1
                         print(f"   ✅ Applied! ({applied_count}/{max_apps})")
+                    elif result is None:
+                        print(f"   ⏭️ Skipped (complex/file upload)")
                     else:
-                        print(f"   ⏭️ Skipped (complex application)")
+                        print(f"   ⏭️ Skipped (couldn't complete)")
 
                     await random_delay(2, 4)
 
