@@ -19,7 +19,7 @@ SEARCH_QUERIES = [
 LOCATION = "mumbai"
 
 # Max applications per run
-MAX_APPLICATIONS = 10
+MAX_APPLICATIONS = 3
 
 # Experience filter (0-2 years)
 EXPERIENCE = "0-2"

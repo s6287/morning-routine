@@ -12,9 +12,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-task:
+  linkedin:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -42,18 +42,47 @@ jobs:
           LINKEDIN_COOKIE: ${{ secrets.LINKEDIN_COOKIE }}
         run: python job_apply.py
 
+      - name: Upload error screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-error
+          path: error_screenshot.png
+          if-no-files-found: ignore
+
+  naukri:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 libxcomposite1 libxdamage1 libxfixes3 libxkbcommon0 libxrandr2
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
       - name: Run Naukri Apply
         env:
           NAUKRI_SID: ${{ secrets.NAUKRI_SID }}
           NAUKRI_NKWAP: ${{ secrets.NAUKRI_NKWAP }}
         run: python naukri_apply.py
 
-      - name: Upload error screenshots
+      - name: Upload error screenshot
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: error-screenshots
-          path: |
-            error_screenshot.png
-            naukri_error.png
+          name: naukri-error
+          path: naukri_error.png
           if-no-files-found: ignore

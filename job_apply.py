@@ -22,7 +22,7 @@ SEARCH_QUERIES = [
 LOCATIONS = ["Mumbai", "Remote"]
 
 # Max total applications per run
-MAX_APPLICATIONS = 20
+MAX_APPLICATIONS = 3
 
 # Filters
 EXPERIENCE_LEVELS = "2%2C3"  # 2=Entry, 3=Associate/Mid
