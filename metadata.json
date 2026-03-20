@@ -1,0 +1,5 @@
+{
+  "name": "Job Automation Engine",
+  "description": "Automate job applications on LinkedIn and Naukri using GitHub Actions. This setup guide helps you configure the necessary secrets and workflows.",
+  "requestFramePermissions": []
+}
